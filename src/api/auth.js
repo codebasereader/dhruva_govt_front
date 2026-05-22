@@ -4,6 +4,18 @@ import { getApiErrorMessage, unwrapApiPayload } from "./utils";
 
 export async function login(credentials) {
   const { data } = await apiClient.post("auth/login", credentials);
+
+  if (data && typeof data === "object" && data.success === false) {
+    const err = new Error("Login failed");
+    err.response = {
+      data: {
+        error: data.error,
+        message: data.error?.message ?? data.message,
+      },
+    };
+    throw err;
+  }
+
   return normalizeAuthResponse(data);
 }
 

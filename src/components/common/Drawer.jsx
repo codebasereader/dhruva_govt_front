@@ -1,7 +1,20 @@
 import { useCallback, useEffect } from "react";
 import { cn } from "../../utils/cn";
 
-function Drawer({ open, onClose, title, description, children, className }) {
+const SIZE_CLASS = {
+  md: "w-full max-w-md",
+  wide: "w-[85vw] max-w-[85vw]",
+};
+
+function Drawer({
+  open,
+  onClose,
+  title,
+  description,
+  children,
+  className,
+  size = "md",
+}) {
   const handleEscape = useCallback(
     (event) => {
       if (event.key === "Escape") onClose();
@@ -34,7 +47,8 @@ function Drawer({ open, onClose, title, description, children, className }) {
         aria-modal="true"
         aria-labelledby="drawer-title"
         className={cn(
-          "relative flex h-full w-full max-w-md flex-col bg-white shadow-2xl shadow-zinc-900/10 animate-[slideIn_0.25s_ease-out]",
+          "relative flex h-full min-w-0 flex-col bg-white shadow-2xl shadow-zinc-900/10 animate-[slideIn_0.25s_ease-out]",
+          SIZE_CLASS[size] ?? SIZE_CLASS.md,
           className,
         )}
       >

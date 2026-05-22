@@ -1,37 +1,47 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getApiErrorMessage, login as loginRequest } from "../../api/auth";
+import { login as loginRequest } from "../../api/auth";
 import { setAuthToken } from "../../api/client";
 import AuthField from "../../components/auth/AuthField";
 import LoginBrand from "../../components/auth/LoginBrand";
 import { getDefaultPathForRole } from "../../config/navigation";
-import { useAuth } from "../../hooks/useAuth";
-import { login as loginAction, setError, setLoading } from "../../reducers/user";
+import { login as loginAction } from "../../reducers/user";
 import { cn } from "../../utils/cn";
 import verifyToken from "../../utils/verifyToken";
 
 const primaryButtonStyles =
   "w-full rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium tracking-tight text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
+function extractErrorMessage(err) {
+  try {
+    const data = err?.response?.data;
+    if (!data) return err?.message || "Unable to sign in. Please check your credentials.";
+    if (typeof data === "string") return data;
+    const errorObj = data.error;
+    if (errorObj && typeof errorObj.message === "string") return errorObj.message;
+    if (typeof data.message === "string") return data.message;
+    return "Unable to sign in. Please check your credentials.";
+  } catch {
+    return "Unable to sign in. Please check your credentials.";
+  }
+}
+
 function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { loading, error } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setFormError("");
-    dispatch(setError(null));
+    setErrorMessage("");
     setSubmitting(true);
-    dispatch(setLoading(true));
 
     try {
       const { access_token, refresh_token, user } = await loginRequest({
@@ -41,11 +51,11 @@ function Login() {
 
       const { status } = verifyToken(access_token);
       if (!status) {
-        throw new Error("Invalid or unauthorized account.");
+        setErrorMessage("Invalid or unauthorized account.");
+        return;
       }
 
       setAuthToken(access_token);
-
       dispatch(
         loginAction({
           id: user._id,
@@ -62,20 +72,13 @@ function Login() {
         location.state?.from?.pathname ?? getDefaultPathForRole(user.role);
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      const message = getApiErrorMessage(
-        err,
-        "Unable to sign in. Please check your credentials.",
-      );
-      setFormError(message);
-      dispatch(setError(message));
+      setErrorMessage(extractErrorMessage(err));
     } finally {
       setSubmitting(false);
-      dispatch(setLoading(false));
     }
   };
 
-  const displayError = formError || error;
-  const isBusy = submitting || loading;
+  const isBusy = submitting;
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center bg-[#fafafa] px-4 py-12 text-zinc-900 antialiased">
@@ -97,12 +100,12 @@ function Login() {
             </p>
           </header>
 
-          {displayError ? (
+          {errorMessage ? (
             <p
               className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
               role="alert"
             >
-              {displayError}
+              {errorMessage}
             </p>
           ) : null}
 

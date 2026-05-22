@@ -24,6 +24,7 @@ import {
   normalizeBusinessPlanEvent,
 } from "../../../utils/businessPlanEvent";
 import { getEntityId } from "../../../utils/entity";
+import BusinessPlanListDrawer from "./BusinessPlanListDrawer";
 import CalendarMonth from "./CalendarMonth";
 import EventWizard from "./EventWizard";
 
@@ -41,6 +42,7 @@ function BusinessPlanCalendar() {
   const [departments, setDepartments] = useState([]);
   const [loadingFilterOptions, setLoadingFilterOptions] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [listDrawerOpen, setListDrawerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [editingEvent, setEditingEvent] = useState(null);
 
@@ -253,6 +255,13 @@ function BusinessPlanCalendar() {
           <h2 className="min-w-[180px] text-lg font-semibold text-zinc-900">
             {getMonthLabel(year, monthIndex)}
           </h2>
+          <button
+            type="button"
+            onClick={() => setListDrawerOpen(true)}
+            className="cursor-pointer rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          >
+            List
+          </button>
         </div>
         <button
           type="button"
@@ -291,6 +300,18 @@ function BusinessPlanCalendar() {
           onEventClick={openEdit}
         />
       )}
+
+      <BusinessPlanListDrawer
+        open={listDrawerOpen}
+        onClose={() => setListDrawerOpen(false)}
+        events={events}
+        loading={loading}
+        monthLabel={getMonthLabel(year, monthIndex)}
+        onEventClick={(event) => {
+          setListDrawerOpen(false);
+          openEdit(event);
+        }}
+      />
 
       <Modal
         open={modalOpen}

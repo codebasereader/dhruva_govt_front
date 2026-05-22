@@ -7,6 +7,7 @@ import { getDefaultPathForRole, OWNER_ONLY_NAV_ITEMS } from "../config/navigatio
 import BusinessPlan from "../dashboard/owner/buisnessplan";
 import Departments from "../dashboard/admin/Departments";
 import Districts from "../dashboard/admin/Districts";
+import Venues from "../dashboard/admin/Venues";
 import Users from "../dashboard/admin/Users";
 import { useAuth } from "../hooks/useAuth";
 import AppLayout from "../pages/layout/AppLayout";
@@ -33,9 +34,10 @@ function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route index element={<HomeRedirect />} />
 
-          {/* Districts & departments — shared by admin and owner */}
+          {/* Districts, departments & venues — shared by admin and owner */}
           <Route path="admin/districts" element={<Districts />} />
           <Route path="admin/departments" element={<Departments />} />
+          <Route path="admin/venues" element={<Venues />} />
 
           <Route element={<OwnerRoute />}>
             <Route path="owner/business-plan" element={<BusinessPlan />} />

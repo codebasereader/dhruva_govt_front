@@ -41,7 +41,20 @@ export const userSlice = createSlice({
       state.loading = action.payload;
     },
     setError: (state, action) => {
-      state.error = action.payload;
+      const next = action.payload;
+      if (next == null) {
+        state.error = null;
+        return;
+      }
+      if (typeof next === "string") {
+        state.error = next;
+        return;
+      }
+      if (typeof next === "object" && typeof next.message === "string") {
+        state.error = next.message;
+        return;
+      }
+      state.error = "Something went wrong";
     },
   },
 });

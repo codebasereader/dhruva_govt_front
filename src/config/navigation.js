@@ -3,6 +3,7 @@ import { ROLES } from "../../config.js";
 export const DISTRICT_DEPARTMENT_NAV_ITEMS = [
   { label: "Districts", path: "/admin/districts" },
   { label: "Departments", path: "/admin/departments" },
+  { label: "Venues", path: "/admin/venues" },
 ];
 
 export const OWNER_ONLY_NAV_ITEMS = [

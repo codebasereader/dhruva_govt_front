@@ -35,10 +35,20 @@ For lists:
 | `id` | string (ObjectId) | yes (response) | Unique event ID |
 | `eventName` | string | yes | Display name on calendar |
 | `date` | string (ISO date) | yes | Event date `YYYY-MM-DD` |
-| `belongsTo` | enum | yes | `"district"` \| `"department"` |
-| `districtId` | string \| null | conditional | Required when `belongsTo === "district"` |
-| `departmentId` | string \| null | conditional | Required when `belongsTo === "department"` |
+| `belongsTo` | enum | yes | `"district"` \| `"department"` \| `"both"` |
+| `districtId` | string \| null | conditional | Required for `district` and `both` |
+| `departmentId` | string \| null | conditional | Required for `department` and `both` |
+| `venueId` | string \| null | yes | Reference to `venues` |
 | `eventType` | enum | yes | `"MCA"` \| `"TENDER"` \| `"FORGI_DC"` |
+| `previousYearAmount` | number \| null | yes | Reference / comparison amount |
+| `currentYearAmount` | number | yes | Base amount for calculations |
+| `gstRate` | number | yes | `5` or `18` (percent) |
+| `mcaSurchargePercent` | number | yes | `5` when MCA, else `0` |
+| `mcaSurchargeAmount` | number | yes | MCA extra 5% on current year (0 for non-MCA) |
+| `amountBeforeGst` | number | yes | Current year + MCA surcharge |
+| `gstBaseAmount` | number | yes | Amount GST is calculated on (see §1.6) |
+| `gstAmount` | number | yes | GST in currency |
+| `grandTotal` / `finalAmount` | number | yes | Final payable amount |
 | `createdAt` | datetime | optional | Audit |
 | `updatedAt` | datetime | optional | Audit |
 
@@ -46,8 +56,9 @@ For lists:
 
 **`belongsTo`**
 
-- `district` — event is tied to a district
-- `department` — event is tied to a department
+- `district` — event is tied to a district only
+- `department` — event is tied to a department only
+- `both` — event requires both `districtId` and `departmentId`
 
 **`eventType`** (calendar colours on UI)
 
@@ -63,8 +74,37 @@ For lists:
 2. `date` — valid `YYYY-MM-DD`  
 3. If `belongsTo === "district"`: `districtId` required, `departmentId` must be `null`  
 4. If `belongsTo === "department"`: `departmentId` required, `districtId` must be `null`  
-5. `districtId` / `departmentId` must reference existing records  
-6. `eventType` must be one of the enum values above  
+5. If `belongsTo === "both"`: both `districtId` and `departmentId` required  
+6. `venueId` required and must reference an existing venue from the global venues list  
+7. `districtId` / `departmentId` must reference existing records  
+8. `eventType` must be one of the enum values above  
+9. Amount fields required for every event (see §1.6)  
+
+### 1.6 Amount calculation (frontend + backend should match)
+
+Let `C` = `currentYearAmount`, `G` = `gstRate` (5 or 18).
+
+**Non-MCA (`TENDER`, `FORGI_DC`):**
+
+```
+mcaSurchargeAmount = 0
+amountBeforeGst = C
+gstBaseAmount = C
+gstAmount = C × (G / 100)
+finalAmount = C + gstAmount
+```
+
+**MCA:**
+
+```
+mcaSurchargeAmount = C × 0.05
+amountBeforeGst = C + mcaSurchargeAmount
+gstBaseAmount = amountBeforeGst
+gstAmount = amountBeforeGst × (G / 100)
+finalAmount = amountBeforeGst + gstAmount
+```
+
+`previousYearAmount` is stored for reference; it does not affect `finalAmount`.
 
 ### 1.4 Example document
 
@@ -234,8 +274,78 @@ The frontend loads dropdowns from:
 |----------|----------|
 | Districts | `GET /districts` |
 | Departments | `GET /departments` |
+| Venues | `GET /venues` · `POST /venues` · `PUT /venues/:id` · `DELETE /venues/:id` (global) |
 
-Ensure `id` fields match those used in `districtId` / `departmentId`.
+See `src/api/venue.js`. Admin/owner **Venues** page (`/admin/venues`) manages the full list; the business-plan wizard can also create via POST and refresh GET.
+
+Ensure `id` fields match those used in `districtId` / `departmentId` / `venueId`.
+
+### 3.1 Venues (read-only from business plan UI)
+
+```http
+GET /venues
+```
+
+Returns all venues (common catalog). No `districtId` or `departmentId` query params.
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "674c00000000000000000001",
+      "name": "Main Hall",
+      "address": "Block A, City Center"
+    }
+  ]
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string | Venue ID |
+| `name` | string | Optional display name |
+| `address` | string | Optional display address |
+
+### 3.2 Create venue (from business plan wizard)
+
+```http
+POST /venues
+```
+
+**Request body**
+
+```json
+{
+  "name": "Main Hall",
+  "address": "Block A, City Center"
+}
+```
+
+| Field | Type | Required |
+|-------|------|----------|
+| `name` | string | yes |
+| `address` | string | no |
+
+**Response `201`:** created venue in `data` (same shape as list items). Frontend then calls `GET /venues` to refresh the dropdown and selects the new `id`.
+
+### 3.3 Update venue
+
+```http
+PUT /venues/{id}
+```
+
+**Request body:** same as create (`name` required, `address` optional).
+
+### 3.4 Delete venue
+
+```http
+DELETE /venues/{id}
+```
+
+**Response `200` or `204`:** success. Confirm in UI before delete.
 
 ---
 
@@ -248,10 +358,21 @@ Ensure `id` fields match those used in `districtId` / `departmentId`.
   _id: ObjectId,
   eventName: { type: String, required: true, trim: true },
   date: { type: String, required: true }, // YYYY-MM-DD index-friendly
-  belongsTo: { type: String, enum: ["district", "department"], required: true },
+  belongsTo: { type: String, enum: ["district", "department", "both"], required: true },
   districtId: { type: ObjectId, ref: "districts", default: null },
   departmentId: { type: ObjectId, ref: "departments", default: null },
+  venueId: { type: ObjectId, ref: "venues", required: true },
   eventType: { type: String, enum: ["MCA", "TENDER", "FORGI_DC"], required: true },
+  previousYearAmount: Number,
+  currentYearAmount: { type: Number, required: true },
+  gstRate: { type: Number, enum: [5, 18], required: true },
+  mcaSurchargePercent: { type: Number, default: 0 },
+  mcaSurchargeAmount: { type: Number, default: 0 },
+  amountBeforeGst: Number,
+  gstBaseAmount: Number,
+  gstAmount: Number,
+  grandTotal: Number,
+  finalAmount: Number,
   createdBy: { type: ObjectId, ref: "users" },
   createdAt: Date,
   updatedAt: Date
@@ -301,3 +422,4 @@ HTTP status codes: `400` validation, `401` unauthorized, `404` not found, `500` 
 | Date | Notes |
 |------|-------|
 | 2026-05-15 | Initial schema for Business Plan calendar MVP |
+| 2026-05-22 | Both belongsTo, venues, amounts for all event types (MCA +5% then GST) |

@@ -15,6 +15,7 @@ function SearchableSelect({
   disabled,
   error,
   loading,
+  headerAction,
 }) {
   const listId = useId();
   const rootRef = useRef(null);
@@ -59,13 +60,16 @@ function SearchableSelect({
 
   return (
     <div ref={rootRef} className="relative space-y-2">
-      <label
-        htmlFor={id}
-        className="block text-xs font-medium uppercase tracking-wider text-zinc-500"
-      >
-        {label}
-        {required ? <span className="text-red-400"> *</span> : null}
-      </label>
+      <div className="flex items-center justify-between gap-2">
+        <label
+          htmlFor={id}
+          className="block text-xs font-medium uppercase tracking-wider text-zinc-500"
+        >
+          {label}
+          {required ? <span className="text-red-400"> *</span> : null}
+        </label>
+        {headerAction ?? null}
+      </div>
 
       <button
         type="button"

@@ -6,7 +6,8 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import AuthInitializer from "./components/auth/AuthInitializer.jsx";
 import apiClient from "./api/client.js";
-import userReducer, { logout } from "./reducers/user.js";
+import userReducer, { logout, setError } from "./reducers/user.js";
+import { toErrorString } from "./api/utils.js";
 import "./index.css";
 
 const STORAGE_KEY = "government_user";
@@ -14,7 +15,22 @@ const STORAGE_KEY = "government_user";
 const loadState = () => {
   try {
     const serialized = localStorage.getItem(STORAGE_KEY);
-    return serialized ? { user: JSON.parse(serialized) } : undefined;
+    if (!serialized) return undefined;
+
+    const parsed = JSON.parse(serialized);
+    const value = parsed?.value ?? parsed;
+
+    if (!value || typeof value !== "object") {
+      return undefined;
+    }
+
+    return {
+      user: {
+        value,
+        loading: false,
+        error: null,
+      },
+    };
   } catch {
     return undefined;
   }
@@ -22,7 +38,8 @@ const loadState = () => {
 
 const saveState = (state) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.user));
+    const { value } = state.user;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ value }));
   } catch {
     // ignore quota errors
   }
@@ -32,6 +49,11 @@ const store = configureStore({
   reducer: combineReducers({ user: userReducer }),
   preloadedState: loadState(),
 });
+
+const initialError = store.getState().user.error;
+if (initialError != null && typeof initialError !== "string") {
+  store.dispatch(setError(toErrorString(initialError) || null));
+}
 
 store.subscribe(() => saveState(store.getState()));
 

@@ -1,6 +1,20 @@
+function hasMeaningfulAuthFields(nested) {
+  return Boolean(
+    nested?.token ||
+      nested?.access_token ||
+      nested?.accessToken ||
+      nested?.jwt ||
+      nested?.user,
+  );
+}
+
 /** Unwraps `{ success, data: { ... } }` API envelopes. */
 export function unwrapApiPayload(response) {
   if (!response || typeof response !== "object") {
+    return response;
+  }
+
+  if (response.success === false) {
     return response;
   }
 
@@ -9,12 +23,10 @@ export function unwrapApiPayload(response) {
     nested &&
     typeof nested === "object" &&
     !Array.isArray(nested) &&
-    (nested.token != null ||
-      nested.access_token != null ||
-      nested.user != null ||
-      nested.id != null ||
-      nested._id != null ||
-      Object.keys(nested).length > 0);
+    (hasMeaningfulAuthFields(nested) ||
+      nested.id ||
+      nested._id ||
+      (response.success === true && Object.keys(nested).length > 0));
 
   if (hasNestedPayload && response.success !== undefined) {
     return nested;
@@ -49,10 +61,21 @@ export function unwrapEntity(response) {
   return unwrapApiPayload(response);
 }
 
+export function toErrorString(value, fallback = "") {
+  if (value == null) return fallback;
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && typeof value.message === "string") {
+    return value.message;
+  }
+  return fallback;
+}
+
 export function getApiErrorMessage(error, fallback = "Something went wrong") {
+  if (typeof error === "string") return error;
+
   const data = error?.response?.data;
   if (!data) {
-    return error?.message ?? fallback;
+    return toErrorString(error, fallback);
   }
 
   if (typeof data === "string") {
@@ -60,7 +83,12 @@ export function getApiErrorMessage(error, fallback = "Something went wrong") {
   }
 
   const payload = unwrapApiPayload(data);
+
   return (
-    payload?.message ?? data.message ?? data.error ?? fallback
+    toErrorString(data.error) ||
+    toErrorString(data.message) ||
+    toErrorString(payload?.error) ||
+    toErrorString(payload?.message) ||
+    fallback
   );
 }

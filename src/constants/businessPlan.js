@@ -7,7 +7,15 @@ export const PLAN_TAB_TYPES = {
 export const BELONGS_TO = {
   DISTRICT: "district",
   DEPARTMENT: "department",
+  BOTH: "both",
 };
+
+export const GST_RATES = {
+  FIVE: 5,
+  EIGHTEEN: 18,
+};
+
+export const MCA_SURCHARGE_PERCENT = 5;
 
 export const EVENT_TYPES = {
   MCA: "MCA",
