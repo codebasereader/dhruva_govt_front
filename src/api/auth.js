@@ -19,6 +19,33 @@ export async function login(credentials) {
   return normalizeAuthResponse(data);
 }
 
+/**
+ * Exchange a refresh token for a new access token (and optional new refresh token).
+ * POST /auth/refresh
+ */
+export async function refreshAuth(refreshToken) {
+  if (!refreshToken?.trim()) {
+    throw new Error("No refresh token");
+  }
+
+  const { data } = await apiClient.post("auth/refresh", {
+    refresh_token: refreshToken,
+    refreshToken: refreshToken,
+  });
+
+  if (data && typeof data === "object" && data.success === false) {
+    const err = new Error("Token refresh failed");
+    err.response = { data };
+    throw err;
+  }
+
+  const normalized = normalizeAuthResponse(data);
+  return {
+    ...normalized,
+    refresh_token: normalized.refresh_token || refreshToken,
+  };
+}
+
 /** Resolve user profile from JWT only (no /auth/me). */
 export function getUserFromToken(token) {
   const decoded = decodeToken(token);
@@ -62,7 +89,11 @@ function normalizeAuthResponse(response) {
 
   return {
     access_token,
-    refresh_token: payload.refresh_token ?? payload.refreshToken ?? "",
+    refresh_token:
+      payload.refresh_token ??
+      payload.refreshToken ??
+      payload.refresh ??
+      "",
     user,
   };
 }

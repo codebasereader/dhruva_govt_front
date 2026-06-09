@@ -4,6 +4,7 @@ export const DISTRICT_DEPARTMENT_NAV_ITEMS = [
   { label: "Districts", path: "/admin/districts" },
   { label: "Departments", path: "/admin/departments" },
   { label: "Venues", path: "/admin/venues" },
+  { label: "Database", path: "/admin/database" },
 ];
 
 export const OWNER_ONLY_NAV_ITEMS = [

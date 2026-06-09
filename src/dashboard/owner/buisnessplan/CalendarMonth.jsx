@@ -6,14 +6,16 @@ import {
   formatEventLocationSummary,
 } from "../../../utils/businessPlanEvent";
 
-function EventPill({ event, onSelect }) {
+export function EventPill({ event, onSelect }) {
   const style = EVENT_TYPE_STYLES[event.eventType] ?? {
     bg: "bg-zinc-100",
     text: "text-zinc-700",
     border: "border-zinc-200",
   };
   const location = formatEventLocationSummary(event);
-  const finalAmount = formatAmountCell(event.finalAmount ?? event.grandTotal);
+  const finalAmount = formatAmountCell(event.finalAmount ?? event.grandTotal, {
+    amountsConfigured: event.amountsConfigured,
+  });
   const tooltip = [event.eventName, location, finalAmount].filter(Boolean).join(" · ");
 
   return (

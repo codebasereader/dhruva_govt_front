@@ -7,6 +7,9 @@ import Modal from "../../../components/common/Modal";
 import PageHeader from "../../../components/common/PageHeader";
 import SearchableSelect from "../../../components/common/SearchableSelect";
 import {
+  CALENDAR_VIEW_MODES,
+  CALENDAR_VIEW_OPTIONS,
+  RECURRENCE_TYPES,
   EVENT_TYPE_OPTIONS,
   EVENT_TYPE_STYLES,
   PLAN_TAB_TYPES,
@@ -18,18 +21,28 @@ import {
   getCalendarCells,
   getMonthLabel,
   shiftMonth,
+  shiftYear,
 } from "../../../utils/calendar";
 import {
+  aggregateEventTypeStats,
+  getUniqueEventsFromByDate,
+  getUniqueEventsFromByMonth,
   groupEventsByDate,
+  groupEventsByMonth,
   normalizeBusinessPlanEvent,
+  resolveEventForCalendarYear,
 } from "../../../utils/businessPlanEvent";
+import { BusinessPlanTypeStatsCards } from "./BusinessPlanTypeStats";
 import { getEntityId } from "../../../utils/entity";
 import BusinessPlanListDrawer from "./BusinessPlanListDrawer";
 import CalendarMonth from "./CalendarMonth";
+import CalendarPeriodPicker from "./CalendarPeriodPicker";
+import CalendarYear from "./CalendarYear";
 import EventWizard from "./EventWizard";
 
 function BusinessPlanCalendar() {
   const now = new Date();
+  const [viewMode, setViewMode] = useState(CALENDAR_VIEW_MODES.MONTH);
   const [year, setYear] = useState(now.getFullYear());
   const [monthIndex, setMonthIndex] = useState(now.getMonth());
   const [activeTab, setActiveTab] = useState(PLAN_TAB_TYPES.ALL);
@@ -43,14 +56,30 @@ function BusinessPlanCalendar() {
   const [loadingFilterOptions, setLoadingFilterOptions] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [listDrawerOpen, setListDrawerOpen] = useState(false);
+  const [listRefreshKey, setListRefreshKey] = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
   const [editingEvent, setEditingEvent] = useState(null);
+  const [wizardAmountYear, setWizardAmountYear] = useState(null);
+  const [wizardInitialStepId, setWizardInitialStepId] = useState(null);
 
+  const isYearView = viewMode === CALENDAR_VIEW_MODES.YEAR;
   const monthKey = formatMonthKey(year, monthIndex);
   const cells = useMemo(
     () => getCalendarCells(year, monthIndex),
     [year, monthIndex],
   );
+
+  const fetchParams = useMemo(() => {
+    const params = { type: activeTab };
+    if (isYearView) {
+      params.year = year;
+    } else {
+      params.month = monthKey;
+    }
+    if (filterDistrictId) params.districtId = filterDistrictId;
+    if (filterDepartmentId) params.departmentId = filterDepartmentId;
+    return params;
+  }, [activeTab, isYearView, year, monthKey, filterDistrictId, filterDepartmentId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,14 +92,7 @@ function BusinessPlanCalendar() {
       setError("");
 
       try {
-        const params = {
-          type: activeTab,
-          month: monthKey,
-        };
-        if (filterDistrictId) params.districtId = filterDistrictId;
-        if (filterDepartmentId) params.departmentId = filterDepartmentId;
-
-        const list = await getBusinessPlanEvents(params);
+        const list = await getBusinessPlanEvents(fetchParams);
         if (!cancelled) {
           setEvents(list.map(normalizeBusinessPlanEvent));
         }
@@ -89,17 +111,15 @@ function BusinessPlanCalendar() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, monthKey, filterDistrictId, filterDepartmentId]);
+  }, [fetchParams]);
 
   const reloadEvents = async () => {
     setLoading(true);
     setError("");
     try {
-      const params = { type: activeTab, month: monthKey };
-      if (filterDistrictId) params.districtId = filterDistrictId;
-      if (filterDepartmentId) params.departmentId = filterDepartmentId;
-      const list = await getBusinessPlanEvents(params);
+      const list = await getBusinessPlanEvents(fetchParams);
       setEvents(list.map(normalizeBusinessPlanEvent));
+      setListRefreshKey((k) => k + 1);
     } catch (err) {
       setError(getApiErrorMessage(err, "Failed to load events."));
     } finally {
@@ -128,15 +148,42 @@ function BusinessPlanCalendar() {
     };
   }, []);
 
-  const eventsByDate = useMemo(() => groupEventsByDate(events), [events]);
+  const eventsByDate = useMemo(
+    () => groupEventsByDate(events, { year, monthIndex }),
+    [events, year, monthIndex],
+  );
+
+  const eventsByMonth = useMemo(
+    () => groupEventsByMonth(events, { year }),
+    [events, year],
+  );
+
+  const periodTypeStats = useMemo(() => {
+    if (isYearView) {
+      return aggregateEventTypeStats(getUniqueEventsFromByMonth(eventsByMonth));
+    }
+    return aggregateEventTypeStats(getUniqueEventsFromByDate(eventsByDate));
+  }, [isYearView, eventsByMonth, eventsByDate]);
+
+  const statsTitle = isYearView
+    ? `Statistics for ${year}`
+    : `Statistics for ${getMonthLabel(year, monthIndex)}`;
 
   const goPrev = () => {
+    if (isYearView) {
+      setYear((y) => shiftYear(y, -1));
+      return;
+    }
     const next = shiftMonth(year, monthIndex, -1);
     setYear(next.year);
     setMonthIndex(next.monthIndex);
   };
 
   const goNext = () => {
+    if (isYearView) {
+      setYear((y) => shiftYear(y, 1));
+      return;
+    }
     const next = shiftMonth(year, monthIndex, 1);
     setYear(next.year);
     setMonthIndex(next.monthIndex);
@@ -146,17 +193,32 @@ function BusinessPlanCalendar() {
     const t = new Date();
     setYear(t.getFullYear());
     setMonthIndex(t.getMonth());
+    setActiveTab(PLAN_TAB_TYPES.ALL);
+    setFilterDistrictId("");
+    setFilterDepartmentId("");
   };
 
   const openCreate = (date) => {
     setEditingEvent(null);
     setSelectedDate(date);
+    const y = date ? Number(String(date).slice(0, 4)) : year;
+    setWizardAmountYear(Number.isFinite(y) ? y : year);
+    setWizardInitialStepId(null);
     setModalOpen(true);
   };
 
-  const openEdit = (event) => {
-    setEditingEvent(event);
-    setSelectedDate(event.date);
+  const openEdit = (ev) => {
+    const normalized = normalizeBusinessPlanEvent(ev);
+    const viewYear = year;
+    const resolved = resolveEventForCalendarYear(normalized, viewYear);
+    setEditingEvent(normalized);
+    setSelectedDate(normalized.startDate ?? normalized.date);
+    setWizardAmountYear(viewYear);
+    setWizardInitialStepId(
+      resolved.recurrenceType === RECURRENCE_TYPES.YEARLY && !resolved.amountsConfigured
+        ? "amounts"
+        : null,
+    );
     setModalOpen(true);
   };
 
@@ -164,13 +226,29 @@ function BusinessPlanCalendar() {
     setModalOpen(false);
     setEditingEvent(null);
     setSelectedDate("");
+    setWizardAmountYear(null);
+    setWizardInitialStepId(null);
+  };
+
+  const drillToMonth = (targetMonthIndex) => {
+    setMonthIndex(targetMonthIndex);
+    setViewMode(CALENDAR_VIEW_MODES.MONTH);
   };
 
   return (
     <article>
       <PageHeader
         title="Business Plan"
-        description="Plan and track MCA, Tender, and Forgi events by month."
+        description="Plan and track MCA, Tender, and Forgi events by month or year."
+        titleAddon={
+          <button
+            type="button"
+            onClick={() => setListDrawerOpen(true)}
+            className="cursor-pointer rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-medium text-emerald-800 shadow-sm transition-colors hover:bg-emerald-100"
+          >
+            List
+          </button>
+        }
       />
 
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -231,12 +309,30 @@ function BusinessPlanCalendar() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-full border border-zinc-200 bg-zinc-50/80 p-1">
+            {CALENDAR_VIEW_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setViewMode(opt.value)}
+                className={cn(
+                  "cursor-pointer rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                  viewMode === opt.value
+                    ? "bg-white text-zinc-900 shadow-sm"
+                    : "text-zinc-500 hover:text-zinc-800",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
             onClick={goPrev}
             className="cursor-pointer rounded-full border border-zinc-200 p-2 text-zinc-600 hover:bg-zinc-50"
-            aria-label="Previous month"
+            aria-label={isYearView ? "Previous year" : "Previous month"}
           >
             <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -246,22 +342,20 @@ function BusinessPlanCalendar() {
             type="button"
             onClick={goNext}
             className="cursor-pointer rounded-full border border-zinc-200 p-2 text-zinc-600 hover:bg-zinc-50"
-            aria-label="Next month"
+            aria-label={isYearView ? "Next year" : "Next month"}
           >
             <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <h2 className="min-w-[180px] text-lg font-semibold text-zinc-900">
-            {getMonthLabel(year, monthIndex)}
-          </h2>
-          <button
-            type="button"
-            onClick={() => setListDrawerOpen(true)}
-            className="cursor-pointer rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-          >
-            List
-          </button>
+
+          <CalendarPeriodPicker
+            viewMode={viewMode}
+            year={year}
+            monthIndex={monthIndex}
+            onYearChange={setYear}
+            onMonthChange={setMonthIndex}
+          />
         </div>
         <button
           type="button"
@@ -292,6 +386,12 @@ function BusinessPlanCalendar() {
 
       {loading ? (
         <p className="py-16 text-center text-sm text-zinc-400">Loading calendar…</p>
+      ) : isYearView ? (
+        <CalendarYear
+          year={year}
+          eventsByMonth={eventsByMonth}
+          onMonthClick={drillToMonth}
+        />
       ) : (
         <CalendarMonth
           cells={cells}
@@ -301,16 +401,18 @@ function BusinessPlanCalendar() {
         />
       )}
 
+      {!loading ? (
+        <BusinessPlanTypeStatsCards stats={periodTypeStats} title={statsTitle} />
+      ) : null}
+
       <BusinessPlanListDrawer
         open={listDrawerOpen}
         onClose={() => setListDrawerOpen(false)}
-        events={events}
-        loading={loading}
-        monthLabel={getMonthLabel(year, monthIndex)}
-        onEventClick={(event) => {
-          setListDrawerOpen(false);
-          openEdit(event);
-        }}
+        districts={districts}
+        departments={departments}
+        loadingFilterOptions={loadingFilterOptions}
+        refreshKey={listRefreshKey}
+        calendarYear={year}
       />
 
       <Modal
@@ -325,9 +427,11 @@ function BusinessPlanCalendar() {
         size="lg"
       >
         <EventWizard
-          key={editingEvent?.id ?? `new-${selectedDate}`}
+          key={editingEvent?.id ?? `new-${selectedDate}-${wizardAmountYear}`}
           event={editingEvent}
           defaultDate={selectedDate}
+          defaultAmountYear={wizardAmountYear ?? year}
+          initialStepId={wizardInitialStepId}
           onClose={closeModal}
           onSaved={() => {
             closeModal();

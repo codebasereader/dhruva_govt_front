@@ -4,6 +4,7 @@ import { cn } from "../../utils/cn";
 const SIZE_CLASS = {
   md: "w-full max-w-md",
   wide: "w-[85vw] max-w-[85vw]",
+  panel: "w-[60vw] max-w-[60vw]",
 };
 
 function Drawer({

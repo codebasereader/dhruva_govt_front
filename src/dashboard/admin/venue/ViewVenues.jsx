@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { deleteVenue, getVenues } from "../../../api/venue";
 import { getApiErrorMessage } from "../../../api/utils";
 import AdminListPage from "../../../components/common/AdminListPage";
@@ -15,13 +15,26 @@ function venueLabel(row) {
 }
 
 function ViewVenues() {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => window.clearTimeout(id);
+  }, [search]);
+
+  const fetchVenues = useCallback(
+    () => getVenues(debouncedSearch ? { search: debouncedSearch } : {}),
+    [debouncedSearch],
+  );
+
   const {
     data: venues,
     loading,
     error: listError,
     reload: load,
     setError: setListError,
-  } = useFetchList(getVenues, "Failed to load venues.");
+  } = useFetchList(fetchVenues, "Failed to load venues.");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -72,11 +85,25 @@ function ViewVenues() {
           </p>
         ) : null}
 
+        <div className="mb-4 max-w-md">
+          <label htmlFor="venue-search" className="mb-1 block text-xs font-medium text-zinc-600">
+            Search venues
+          </label>
+          <input
+            id="venue-search"
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Name or address…"
+            className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 outline-none ring-zinc-300 focus:ring-2"
+          />
+        </div>
+
         <DataTable
           columns={columns}
           data={venues}
           loading={loading}
-          emptyMessage="No venues yet."
+          emptyMessage={debouncedSearch ? "No venues match your search." : "No venues yet."}
           rowKey={(row) => getEntityId(row)}
           renderActions={(row) => (
             <TableActions

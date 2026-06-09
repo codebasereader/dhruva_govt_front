@@ -16,6 +16,8 @@ function SearchableSelect({
   error,
   loading,
   headerAction,
+  onEditOption,
+  onDeleteOption,
 }) {
   const listId = useId();
   const rootRef = useRef(null);
@@ -121,19 +123,54 @@ function SearchableSelect({
               <li className="px-4 py-3 text-sm text-zinc-400">No matches found</li>
             ) : (
               filtered.map((opt) => (
-                <li key={opt.value} role="option" aria-selected={opt.value === value}>
+                <li
+                  key={opt.value}
+                  role="option"
+                  aria-selected={opt.value === value}
+                  className="flex items-center gap-1 pr-1"
+                >
                   <button
                     type="button"
                     onClick={() => handleSelect(opt.value)}
                     className={cn(
-                      "w-full cursor-pointer px-4 py-2.5 text-left text-sm transition-colors hover:bg-zinc-50",
+                      "min-w-0 flex-1 cursor-pointer px-4 py-2.5 text-left text-sm transition-colors hover:bg-zinc-50",
                       opt.value === value
                         ? "bg-zinc-100 font-medium text-zinc-900"
                         : "text-zinc-700",
                     )}
                   >
-                    {opt.label}
+                    <span className="block truncate">{opt.label}</span>
                   </button>
+                  {onEditOption || onDeleteOption ? (
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      {onEditOption ? (
+                        <button
+                          type="button"
+                          title="Edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditOption(opt);
+                          }}
+                          className="cursor-pointer rounded-md px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+                        >
+                          Edit
+                        </button>
+                      ) : null}
+                      {onDeleteOption ? (
+                        <button
+                          type="button"
+                          title="Delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteOption(opt);
+                          }}
+                          className="cursor-pointer rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </li>
               ))
             )}

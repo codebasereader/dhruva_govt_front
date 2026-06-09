@@ -5,8 +5,9 @@ import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import AuthInitializer from "./components/auth/AuthInitializer.jsx";
+import { setupAuthInterceptor } from "./api/authInterceptor.js";
 import apiClient from "./api/client.js";
-import userReducer, { logout, setError } from "./reducers/user.js";
+import userReducer, { setError } from "./reducers/user.js";
 import { toErrorString } from "./api/utils.js";
 import "./index.css";
 
@@ -45,9 +46,14 @@ const saveState = (state) => {
   }
 };
 
+const preloadedState = loadState();
+if (preloadedState?.user?.value?.is_logged_in) {
+  preloadedState.user.loading = true;
+}
+
 const store = configureStore({
   reducer: combineReducers({ user: userReducer }),
-  preloadedState: loadState(),
+  preloadedState,
 });
 
 const initialError = store.getState().user.error;
@@ -57,20 +63,7 @@ if (initialError != null && typeof initialError !== "string") {
 
 store.subscribe(() => saveState(store.getState()));
 
-apiClient.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      const url = err.config?.url ?? "";
-      const isAuthEndpoint = /auth\/(login|register)$/.test(url);
-      if (!isAuthEndpoint) {
-        store.dispatch(logout());
-        window.location.href = "/login";
-      }
-    }
-    return Promise.reject(err);
-  },
-);
+setupAuthInterceptor(apiClient, store);
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

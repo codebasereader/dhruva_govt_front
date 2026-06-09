@@ -3,9 +3,15 @@ import { unwrapEntity, unwrapList } from "./utils";
 
 const BASE = "venues";
 
-/** Global venue list (not scoped by district or department). */
-export async function getVenues() {
-  const { data } = await apiClient.get(BASE);
+/**
+ * @param {{ search?: string }} [params]
+ * Case-insensitive search on venue name or address.
+ */
+export async function getVenues(params = {}) {
+  const query = {};
+  if (params.search?.trim()) query.search = params.search.trim();
+
+  const { data } = await apiClient.get(BASE, { params: query });
   return unwrapList(data);
 }
 

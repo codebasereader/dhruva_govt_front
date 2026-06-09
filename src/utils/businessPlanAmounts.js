@@ -1,17 +1,21 @@
 import { EVENT_TYPES, MCA_SURCHARGE_PERCENT } from "../constants/businessPlan";
+import { parseIndianAmountInput } from "./indianCurrency";
 
-function roundMoney(value) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+function roundRupee(value) {
+  return Math.round(value);
 }
 
 export function parseAmountInput(value) {
-  if (value === "" || value == null) return 0;
-  const n = Number.parseFloat(String(value).replace(/,/g, ""));
-  return Number.isFinite(n) ? n : 0;
+  return parseIndianAmountInput(value);
+}
+
+/** True when the field has an explicit value (including 0), not blank. */
+export function isEnteredAmount(value) {
+  return value !== "" && value != null && parseAmountInput(value) >= 0;
 }
 
 /**
- * Non-MCA (TENDER, FORGI_DC): GST % applied to current-year amount only.
+ * Non-MCA (TENDER, 4g types): GST % applied to current-year amount only.
  *   finalAmount = currentYear + GST
  *
  * MCA: extra 5% on current year, then GST % on (current + MCA surcharge).
@@ -25,13 +29,13 @@ export function calculateBusinessPlanAmounts({
   const current = parseAmountInput(currentYearAmount);
   const isMca = eventType === EVENT_TYPES.MCA;
   const mcaSurchargeAmount = isMca
-    ? roundMoney(current * (MCA_SURCHARGE_PERCENT / 100))
+    ? roundRupee(current * (MCA_SURCHARGE_PERCENT / 100))
     : 0;
-  const amountBeforeGst = roundMoney(current + mcaSurchargeAmount);
+  const amountBeforeGst = roundRupee(current + mcaSurchargeAmount);
   const gstPercent = gstRate === 18 ? 18 : gstRate === 5 ? 5 : 0;
   const gstBaseAmount = isMca ? amountBeforeGst : current;
-  const gstAmount = roundMoney(gstBaseAmount * (gstPercent / 100));
-  const grandTotal = roundMoney(gstBaseAmount + gstAmount);
+  const gstAmount = roundRupee(gstBaseAmount * (gstPercent / 100));
+  const grandTotal = roundRupee(gstBaseAmount + gstAmount);
 
   return {
     currentYearAmount: current,
@@ -46,11 +50,38 @@ export function calculateBusinessPlanAmounts({
   };
 }
 
+/** Build one `yearlyAmounts[]` entry with computed totals for API payload. */
+export function buildYearlyAmountEntry(year, fields) {
+  const amounts = calculateBusinessPlanAmounts({
+    eventType: fields.eventType,
+    currentYearAmount: fields.currentYearAmount,
+    gstRate: fields.gstRate,
+  });
+
+  return {
+    year: Number(year),
+    previousYearAmount:
+      fields.previousYearAmount === "" || fields.previousYearAmount == null
+        ? null
+        : parseAmountInput(fields.previousYearAmount),
+    referredBy: fields.referredBy?.trim() || null,
+    currentYearAmount: amounts.currentYearAmount,
+    gstRate: fields.gstRate,
+    mcaSurchargePercent: amounts.mcaSurchargePercent,
+    mcaSurchargeAmount: amounts.mcaSurchargeAmount,
+    amountBeforeGst: amounts.amountBeforeGst,
+    gstBaseAmount: amounts.gstBaseAmount,
+    gstAmount: amounts.gstAmount,
+    grandTotal: amounts.grandTotal,
+    finalAmount: amounts.finalAmount,
+  };
+}
+
 export function formatMoney(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "0.00";
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return "0";
   return n.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   });
 }
