@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { getDepartments } from "../../../api/department";
 import { getDistricts } from "../../../api/district";
-import { getBusinessPlanEvents } from "../../../api/buisnessplan";
+import { getActualPlanEvents } from "../../../api/actualplan";
 import { getApiErrorMessage } from "../../../api/utils";
 import Modal from "../../../components/common/Modal";
 import PageHeader from "../../../components/common/PageHeader";
@@ -32,15 +32,15 @@ import {
   normalizeBusinessPlanEvent,
   resolveEventForCalendarYear,
 } from "../../../utils/businessPlanEvent";
-import { BusinessPlanTypeStatsCards } from "./BusinessPlanTypeStats";
+import { ActualPlanTypeStatsCards } from "./ActualPlanTypeStats";
 import { getEntityId } from "../../../utils/entity";
-import BusinessPlanListDrawer from "./BusinessPlanListDrawer";
+import ActualPlanListDrawer from "./ActualPlanListDrawer";
 import CalendarMonth from "./CalendarMonth";
 import CalendarPeriodPicker from "./CalendarPeriodPicker";
 import CalendarYear from "./CalendarYear";
 import EventWizard from "./EventWizard";
 
-function BusinessPlanCalendar() {
+function ActualPlanCalendar() {
   const now = new Date();
   const [viewMode, setViewMode] = useState(CALENDAR_VIEW_MODES.MONTH);
   const [year, setYear] = useState(now.getFullYear());
@@ -92,7 +92,7 @@ function BusinessPlanCalendar() {
       setError("");
 
       try {
-        const list = await getBusinessPlanEvents(fetchParams);
+        const list = await getActualPlanEvents(fetchParams);
         if (!cancelled) {
           setEvents(list.map(normalizeBusinessPlanEvent));
         }
@@ -117,7 +117,7 @@ function BusinessPlanCalendar() {
     setLoading(true);
     setError("");
     try {
-      const list = await getBusinessPlanEvents(fetchParams);
+      const list = await getActualPlanEvents(fetchParams);
       setEvents(list.map(normalizeBusinessPlanEvent));
       setListRefreshKey((k) => k + 1);
     } catch (err) {
@@ -238,7 +238,7 @@ function BusinessPlanCalendar() {
   return (
     <article>
       <PageHeader
-        title="Business Plan"
+        title="Actual Plan"
         description="Plan and track MCA, Tender, and Forgi events by month or year."
         titleAddon={
           <button
@@ -404,10 +404,10 @@ function BusinessPlanCalendar() {
       )}
 
       {!loading ? (
-        <BusinessPlanTypeStatsCards stats={periodTypeStats} title={statsTitle} />
+        <ActualPlanTypeStatsCards stats={periodTypeStats} title={statsTitle} />
       ) : null}
 
-      <BusinessPlanListDrawer
+      <ActualPlanListDrawer
         open={listDrawerOpen}
         onClose={() => setListDrawerOpen(false)}
         districts={districts}
@@ -445,4 +445,4 @@ function BusinessPlanCalendar() {
   );
 }
 
-export default BusinessPlanCalendar;
+export default ActualPlanCalendar;

@@ -445,20 +445,25 @@ function normalizeDate(value) {
   return String(value).slice(0, 10);
 }
 
-export function groupEventsByDate(events, options = {}) {
+/**
+ * Calendar occurrences with inclusive start/end date keys.
+ * Used for day grouping and multi-day spanning bars.
+ */
+export function listEventOccurrences(events, options = {}) {
   const targetYear = options.year;
   const targetMonthIndex = options.monthIndex;
+  const results = [];
 
-  return events.reduce((acc, event) => {
+  for (const event of events) {
     const normalizedEvent = normalizeBusinessPlanEvent(event);
     const start = normalizedEvent.startDate ?? normalizedEvent.date;
     const end = normalizedEvent.endDate ?? normalizedEvent.date ?? start;
-    if (!start) return acc;
+    if (!start) continue;
 
     const baseStartDate = new Date(`${start}T12:00:00`);
     const baseEndDate = new Date(`${end}T12:00:00`);
     if (Number.isNaN(baseStartDate.getTime()) || Number.isNaN(baseEndDate.getTime())) {
-      return acc;
+      continue;
     }
 
     const occurrences =
@@ -469,22 +474,40 @@ export function groupEventsByDate(events, options = {}) {
         : [{ startDate: baseStartDate, endDate: baseEndDate }];
 
     for (const occurrence of occurrences) {
-      const days = Math.max(
-        0,
-        Math.floor(
-          (occurrence.endDate.getTime() - occurrence.startDate.getTime()) / (24 * 60 * 60 * 1000),
-        ),
-      );
-      for (let i = 0; i <= days; i += 1) {
-        const d = new Date(occurrence.startDate.getTime() + i * 24 * 60 * 60 * 1000);
-        const key = toDateString(d);
-        const calendarYear = d.getFullYear();
-        const displayEvent = resolveEventForCalendarYear(normalizedEvent, calendarYear);
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(displayEvent);
-      }
+      const startKey = toDateString(occurrence.startDate);
+      const endKey = toDateString(occurrence.endDate);
+      const calendarYear = occurrence.startDate.getFullYear();
+      const displayEvent = resolveEventForCalendarYear(normalizedEvent, calendarYear);
+      results.push({
+        event: displayEvent,
+        startDate: startKey,
+        endDate: endKey,
+        occurrenceKey: `${displayEvent.id ?? displayEvent.eventName}|${startKey}|${endKey}`,
+      });
     }
+  }
 
+  return results;
+}
+
+export function groupEventsByDate(events, options = {}) {
+  const occurrences = listEventOccurrences(events, options);
+
+  return occurrences.reduce((acc, occurrence) => {
+    const start = new Date(`${occurrence.startDate}T12:00:00`);
+    const end = new Date(`${occurrence.endDate}T12:00:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return acc;
+
+    const days = Math.max(
+      0,
+      Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)),
+    );
+    for (let i = 0; i <= days; i += 1) {
+      const d = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
+      const key = toDateString(d);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(occurrence.event);
+    }
     return acc;
   }, {});
 }

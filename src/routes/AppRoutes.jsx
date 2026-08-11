@@ -4,6 +4,7 @@ import GuestRoute from "../components/auth/GuestRoute";
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 import PagePlaceholder from "../components/common/PagePlaceholder";
 import { getDefaultPathForRole, OWNER_ONLY_NAV_ITEMS } from "../config/navigation";
+import ActualPlan from "../dashboard/owner/actualplan";
 import BusinessPlan from "../dashboard/owner/buisnessplan";
 import Departments from "../dashboard/admin/Departments";
 import Districts from "../dashboard/admin/Districts";
@@ -42,9 +43,12 @@ function AppRoutes() {
           <Route path="admin/database" element={<Database />} />
 
           <Route element={<OwnerRoute />}>
+            <Route path="owner/actual-plan" element={<ActualPlan />} />
             <Route path="owner/business-plan" element={<BusinessPlan />} />
             {OWNER_ONLY_NAV_ITEMS.filter(
-              (item) => item.path !== "/owner/business-plan",
+              (item) =>
+                item.path !== "/owner/actual-plan" &&
+                item.path !== "/owner/business-plan",
             ).map(({ label, path }) => (
               <Route
                 key={path}
