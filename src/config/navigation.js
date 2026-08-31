@@ -9,6 +9,7 @@ export const DISTRICT_DEPARTMENT_NAV_ITEMS = [
 
 export const OWNER_ONLY_NAV_ITEMS = [
   { label: "Calendar", path: "/owner/calendar" },
+  { label: "Actual Plan", path: "/owner/actual-plan" },
   { label: "Wed-Leads", path: "/owner/wed-leads" },
   { label: "My leads", path: "/owner/my-leads" },
   { label: "Business Plan", path: "/owner/business-plan" },

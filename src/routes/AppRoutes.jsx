@@ -7,6 +7,7 @@ import {
   getDefaultPathForRole,
   getRoutedOwnerOnlyNavItems,
 } from "../config/navigation";
+import ActualPlan from "../dashboard/owner/actualplan";
 import BusinessPlan from "../dashboard/owner/buisnessplan";
 import Calendar from "../dashboard/owner/calendar";
 import MyLeads from "../dashboard/owner/myleads";
@@ -21,6 +22,7 @@ import AppLayout from "../pages/layout/AppLayout";
 import Login from "../pages/login/Login";
 
 const OWNER_PLACEHOLDER_PATHS = new Set([
+  "/owner/actual-plan",
   "/owner/business-plan",
   "/owner/calendar",
   "/owner/my-leads",
@@ -56,6 +58,7 @@ function AppRoutes() {
 
           <Route element={<OwnerRoute />}>
             <Route path="owner/calendar" element={<Calendar />} />
+            <Route path="owner/actual-plan" element={<ActualPlan />} />
             <Route path="owner/wed-leads" element={<WedLeads />} />
             <Route path="owner/my-leads" element={<MyLeads />} />
             <Route path="owner/business-plan" element={<BusinessPlan />} />
