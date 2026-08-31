@@ -63,11 +63,11 @@ function MobileNav({ isOpen, onClose }) {
         <nav aria-label="Mobile primary navigation">
           <ul className="flex flex-col gap-1">
             {navItems.map(({ label, path }) => (
-              <li key={path}>
+              <li key={path ?? label}>
                 <NavItem
                   to={path}
                   label={label}
-                  onClick={onClose}
+                  onClick={path ? onClose : undefined}
                   className="block w-full rounded-xl px-4 py-3"
                 />
               </li>

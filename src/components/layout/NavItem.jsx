@@ -9,7 +9,21 @@ const inactiveStyles = "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100/80";
 
 const activeStyles = "text-zinc-900 bg-zinc-100";
 
+const pendingStyles = "cursor-default text-zinc-400";
+
 function NavItem({ to, label, onClick, className }) {
+  if (!to) {
+    return (
+      <span
+        title="Coming soon"
+        aria-disabled="true"
+        className={cn(baseStyles, pendingStyles, className)}
+      >
+        {label}
+      </span>
+    );
+  }
+
   return (
     <NavLink
       to={to}

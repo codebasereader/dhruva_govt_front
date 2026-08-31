@@ -9,7 +9,7 @@ function NavMenu({ className, onItemClick }) {
     <nav className={className} aria-label="Primary navigation">
       <ul className="flex flex-wrap items-center gap-0.5">
         {navItems.map(({ label, path }) => (
-          <li key={path}>
+          <li key={path ?? label}>
             <NavItem to={path} label={label} onClick={onItemClick} />
           </li>
         ))}

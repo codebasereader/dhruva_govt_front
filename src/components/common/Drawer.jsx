@@ -5,6 +5,10 @@ const SIZE_CLASS = {
   md: "w-full max-w-md",
   wide: "w-[85vw] max-w-[85vw]",
   panel: "w-[60vw] max-w-[60vw]",
+  /** 75% viewport — My Leads form drawer */
+  threeQuarter: "w-[75vw] max-w-[75vw]",
+  /** ~80% — Client booking details */
+  booking: "w-[80vw] max-w-[80vw]",
 };
 
 function Drawer({
