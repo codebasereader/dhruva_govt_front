@@ -1,110 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getClientLeads, getCoordinators } from "../../../api/clientLeads";
+import { getClientLeads } from "../../../api/clientLeads";
 import { getApiErrorMessage } from "../../../api/utils";
 import DataTable from "../../../components/common/DataTable";
-import SearchableSelect from "../../../components/common/SearchableSelect";
 import {
-  CLIENT_LEAD_STATUS_OPTIONS,
-  CLIENT_LEAD_STATUS_STYLES,
   LEADS_TRACKER_DEFAULT_PAGE_SIZE,
   LEADS_TRACKER_PAGE_SIZE_OPTIONS,
 } from "../../../constants/wedLeads";
-import { cn } from "../../../utils/cn";
 import { getEntityId } from "../../../utils/entity";
-import {
-  computeBudgetSummaryFromLeads,
-  formatAmountINR,
-  formatDateDisplay,
-  getMonthBounds,
-  getNotesDisplay,
-  getPersonDisplayName,
-} from "../../../utils/clientLead";
-import LeadDetailDrawer from "./LeadDetailDrawer";
-
-function SummaryCard({ title, amount, count, accent }) {
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border bg-white px-5 py-4 shadow-sm shadow-zinc-900/[0.02]",
-        accent,
-      )}
-    >
-      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-        {title}
-      </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">
-        {formatAmountINR(amount)}
-      </p>
-      <p className="mt-1 text-sm text-zinc-500">
-        · {count} lead{count === 1 ? "" : "s"}
-      </p>
-    </div>
-  );
-}
-
-function StatusCell({ status, converted }) {
-  return (
-    <div className="space-y-1">
-      <span
-        className={cn(
-          "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium",
-          CLIENT_LEAD_STATUS_STYLES[status] ??
-            "border-zinc-200 bg-zinc-50 text-zinc-700",
-        )}
-      >
-        {status || "—"}
-      </span>
-      {converted ? (
-        <span className="block text-[11px] font-medium text-emerald-700">
-          Converted
-        </span>
-      ) : null}
-    </div>
-  );
-}
+import { getMonthBounds } from "../../../utils/clientLead";
 
 function LeadsTrackerTab() {
-  const [status, setStatus] = useState("");
-  const [assignedTo, setAssignedTo] = useState("");
   const [monthValue, setMonthValue] = useState("");
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
 
-  const [coordinators, setCoordinators] = useState([]);
-  const [loadingCoordinators, setLoadingCoordinators] = useState(true);
-
   const [leads, setLeads] = useState([]);
-  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(LEADS_TRACKER_DEFAULT_PAGE_SIZE);
 
-  const [viewId, setViewId] = useState(null);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      setLoadingCoordinators(true);
-      try {
-        const list = await getCoordinators();
-        if (active) setCoordinators(list);
-      } catch {
-        if (active) setCoordinators([]);
-      } finally {
-        if (active) setLoadingCoordinators(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
   const queryParams = useMemo(() => {
     const params = {};
-    if (status) params.status = status;
-    if (assignedTo) params.assignedTo = assignedTo;
 
     if (rangeStart && rangeEnd) {
       params.startDate = rangeStart;
@@ -121,7 +39,7 @@ function LeadsTrackerTab() {
     }
 
     return params;
-  }, [status, assignedTo, monthValue, rangeStart, rangeEnd]);
+  }, [monthValue, rangeStart, rangeEnd]);
 
   const loadLeads = useCallback(async () => {
     setLoading(true);
@@ -129,12 +47,10 @@ function LeadsTrackerTab() {
     try {
       const result = await getClientLeads(queryParams);
       setLeads(result.leads);
-      setSummary(result.summary);
       setPage(1);
     } catch (err) {
       setError(getApiErrorMessage(err, "Failed to load leads."));
       setLeads([]);
-      setSummary(null);
     } finally {
       setLoading(false);
     }
@@ -144,40 +60,9 @@ function LeadsTrackerTab() {
     void loadLeads();
   }, [loadLeads]);
 
-  const activeRange = useMemo(() => {
-    if (rangeStart && rangeEnd) {
-      return { start: rangeStart, end: rangeEnd };
-    }
-    if (monthValue) {
-      const [y, m] = monthValue.split("-").map(Number);
-      const bounds = getMonthBounds(y, m - 1);
-      return { start: bounds.startDate, end: bounds.endDate };
-    }
-    return { start: "", end: "" };
-  }, [rangeStart, rangeEnd, monthValue]);
-
-  const cards = useMemo(() => {
-    if (
-      summary &&
-      (summary.totalEstimatedBudget != null ||
-        summary.totalConvertedBudget != null)
-    ) {
-      return summary;
-    }
-    return computeBudgetSummaryFromLeads(
-      leads,
-      activeRange.start,
-      activeRange.end,
-    );
-  }, [summary, leads, activeRange]);
-
-  const hasFilters = Boolean(
-    status || assignedTo || monthValue || (rangeStart && rangeEnd),
-  );
+  const hasFilters = Boolean(monthValue || (rangeStart && rangeEnd));
 
   const clearFilters = () => {
-    setStatus("");
-    setAssignedTo("");
     setMonthValue("");
     setRangeStart("");
     setRangeEnd("");
@@ -215,26 +100,9 @@ function LeadsTrackerTab() {
       render: (row) => row.__sl,
     },
     {
-      key: "status",
-      label: "Status",
-      className: "min-w-[120px]",
-      render: (row) => (
-        <StatusCell
-          status={row.status}
-          converted={Boolean(row.convertedByMarketing)}
-        />
-      ),
-    },
-    {
-      key: "estimatedBudget",
-      label: "Estimated budget",
-      className: "min-w-[140px] text-right tabular-nums",
-      render: (row) => formatAmountINR(row.estimatedBudget),
-    },
-    {
       key: "clientDetails",
       label: "Client details",
-      className: "min-w-[200px] max-w-[280px]",
+      className: "min-w-[220px] max-w-[320px]",
       render: (row) => (
         <span className="line-clamp-2" title={row.clientDetails || undefined}>
           {row.clientDetails?.trim() || "—"}
@@ -244,37 +112,11 @@ function LeadsTrackerTab() {
     {
       key: "eventTypeDetails",
       label: "Event type details",
-      className: "min-w-[200px] max-w-[280px]",
+      className: "min-w-[220px] max-w-[320px]",
       render: (row) => (
         <span className="line-clamp-2" title={row.eventTypeDetails || undefined}>
           {row.eventTypeDetails?.trim() || "—"}
         </span>
-      ),
-    },
-    {
-      key: "startDate",
-      label: "Start date",
-      className: "min-w-[120px] whitespace-nowrap",
-      render: (row) => formatDateDisplay(row.startDate),
-    },
-    {
-      key: "endDate",
-      label: "End date",
-      className: "min-w-[120px] whitespace-nowrap",
-      render: (row) => formatDateDisplay(row.endDate),
-    },
-    {
-      key: "assignedTo",
-      label: "Assign to",
-      className: "min-w-[140px]",
-      render: (row) => getPersonDisplayName(row.assignedTo) || "—",
-    },
-    {
-      key: "notes",
-      label: "Notes",
-      className: "min-w-[220px] max-w-[260px]",
-      render: (row) => (
-        <span title={row.notes || undefined}>{getNotesDisplay(row.notes)}</span>
       ),
     },
   ];
@@ -286,55 +128,8 @@ function LeadsTrackerTab() {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SummaryCard
-          title="Estimated Budget (pipeline)"
-          amount={cards.totalEstimatedBudget}
-          count={cards.estimatedLeadsCount}
-          accent="border-zinc-200/90"
-        />
-        <SummaryCard
-          title="Successfully Converted Leads"
-          amount={cards.totalConvertedBudget}
-          count={cards.convertedLeadsCount}
-          accent="border-emerald-200/80"
-        />
-      </div>
-
       <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm shadow-zinc-900/[0.02]">
-        <div className="grid gap-3 lg:grid-cols-4">
-          <div>
-            <label
-              htmlFor="wed-lead-status"
-              className="mb-1 block text-xs font-medium text-zinc-600"
-            >
-              Status
-            </label>
-            <select
-              id="wed-lead-status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full cursor-pointer rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-zinc-300 focus:ring-2"
-            >
-              <option value="">All statuses</option>
-              {CLIENT_LEAD_STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <SearchableSelect
-            id="wed-lead-coordinator"
-            label="Coordinator"
-            value={assignedTo}
-            onChange={setAssignedTo}
-            options={[{ value: "", label: "All coordinators" }, ...coordinators]}
-            placeholder="All coordinators"
-            loading={loadingCoordinators}
-          />
-
+        <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <label
               htmlFor="wed-lead-month"
@@ -351,39 +146,37 @@ function LeadsTrackerTab() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label
-                htmlFor="wed-lead-range-start"
-                className="mb-1 block text-xs font-medium text-zinc-600"
-              >
-                Start from
-              </label>
-              <input
-                id="wed-lead-range-start"
-                type="date"
-                value={rangeStart}
-                max={rangeEnd || undefined}
-                onChange={(e) => handleRangeStart(e.target.value)}
-                className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 outline-none ring-zinc-300 focus:ring-2"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="wed-lead-range-end"
-                className="mb-1 block text-xs font-medium text-zinc-600"
-              >
-                Start to
-              </label>
-              <input
-                id="wed-lead-range-end"
-                type="date"
-                value={rangeEnd}
-                min={rangeStart || undefined}
-                onChange={(e) => handleRangeEnd(e.target.value)}
-                className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 outline-none ring-zinc-300 focus:ring-2"
-              />
-            </div>
+          <div>
+            <label
+              htmlFor="wed-lead-range-start"
+              className="mb-1 block text-xs font-medium text-zinc-600"
+            >
+              Start from
+            </label>
+            <input
+              id="wed-lead-range-start"
+              type="date"
+              value={rangeStart}
+              max={rangeEnd || undefined}
+              onChange={(e) => handleRangeStart(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 outline-none ring-zinc-300 focus:ring-2"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="wed-lead-range-end"
+              className="mb-1 block text-xs font-medium text-zinc-600"
+            >
+              Start to
+            </label>
+            <input
+              id="wed-lead-range-end"
+              type="date"
+              value={rangeEnd}
+              min={rangeStart || undefined}
+              onChange={(e) => handleRangeEnd(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 outline-none ring-zinc-300 focus:ring-2"
+            />
           </div>
         </div>
 
@@ -411,15 +204,6 @@ function LeadsTrackerTab() {
         loading={loading}
         emptyMessage={hasFilters ? "No leads match your filters." : "No leads yet."}
         rowKey={(row) => getEntityId(row)}
-        renderActions={(row) => (
-          <button
-            type="button"
-            onClick={() => setViewId(getEntityId(row))}
-            className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
-          >
-            View
-          </button>
-        )}
       />
 
       {!loading && total > 0 ? (
@@ -471,12 +255,6 @@ function LeadsTrackerTab() {
           </div>
         </div>
       ) : null}
-
-      <LeadDetailDrawer
-        open={Boolean(viewId)}
-        onClose={() => setViewId(null)}
-        leadId={viewId}
-      />
     </div>
   );
 }
