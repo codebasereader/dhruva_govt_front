@@ -22,7 +22,7 @@ function MobileBackdrop({ isOpen, onClose }) {
 const MOBILE_NAV_PANEL_ID = "mobile-nav-panel";
 
 function MobileNav({ isOpen, onClose }) {
-  const navItems = useNavItems();
+  const { mainItems, moreItems } = useNavItems();
 
   const handleEscape = useCallback(
     (event) => {
@@ -62,7 +62,7 @@ function MobileNav({ isOpen, onClose }) {
       >
         <nav aria-label="Mobile primary navigation">
           <ul className="flex flex-col gap-1">
-            {navItems.map(({ label, path }) => (
+            {mainItems.map(({ label, path }) => (
               <li key={path ?? label}>
                 <NavItem
                   to={path}
@@ -73,6 +73,26 @@ function MobileNav({ isOpen, onClose }) {
               </li>
             ))}
           </ul>
+
+          {moreItems.length > 0 && (
+            <div className="mt-2 border-t border-zinc-100 pt-2">
+              <p className="px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                More
+              </p>
+              <ul className="flex flex-col gap-1">
+                {moreItems.map(({ label, path }) => (
+                  <li key={path ?? label}>
+                    <NavItem
+                      to={path}
+                      label={label}
+                      onClick={path ? onClose : undefined}
+                      className="block w-full rounded-xl px-4 py-3"
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="mt-4 border-t border-zinc-100 pt-4 lg:hidden">
             <LogoutButton

@@ -1,5 +1,8 @@
 import { ROLES } from "../../config.js";
 
+/** Labels shown under the "More" dropdown, in display order. */
+const MORE_MENU_LABELS = ["Vendors", "Districts", "Departments", "Venues"];
+
 export const DISTRICT_DEPARTMENT_NAV_ITEMS = [
   { label: "Districts", path: "/admin/districts" },
   { label: "Departments", path: "/admin/departments" },
@@ -41,6 +44,29 @@ export function getNavItemsForRole(role) {
   }
 
   return OWNER_NAV_ITEMS;
+}
+
+/**
+ * Splits a role's nav items into the primary row and the items that should
+ * live under the "More" dropdown, preserving relative order in each group.
+ */
+export function groupNavItems(items) {
+  const mainItems = [];
+  const moreItems = [];
+
+  for (const item of items) {
+    if (MORE_MENU_LABELS.includes(item.label)) {
+      moreItems.push(item);
+    } else {
+      mainItems.push(item);
+    }
+  }
+
+  return { mainItems, moreItems };
+}
+
+export function getGroupedNavItemsForRole(role) {
+  return groupNavItems(getNavItemsForRole(role));
 }
 
 export function getDefaultPathForRole(role) {
