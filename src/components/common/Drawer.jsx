@@ -9,6 +9,8 @@ const SIZE_CLASS = {
   threeQuarter: "w-[75vw] max-w-[75vw]",
   /** ~80% — Client booking details */
   booking: "w-[80vw] max-w-[80vw]",
+  /** 90% — Budget Report spreadsheet editor */
+  full: "w-[90vw] max-w-[90vw]",
 };
 
 function Drawer({

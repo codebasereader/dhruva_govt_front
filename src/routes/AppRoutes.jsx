@@ -12,6 +12,8 @@ import BusinessPlan from "../dashboard/owner/buisnessplan";
 import Calendar from "../dashboard/owner/calendar";
 import MyLeads from "../dashboard/owner/myleads";
 import WedLeads from "../dashboard/owner/wedleads";
+import BudgetReportPage from "../dashboard/owner/wedleads/finance/BudgetReportPage";
+import BudgetReportsListPage from "../dashboard/owner/wedleads/finance/BudgetReportsListPage";
 import Departments from "../dashboard/admin/Departments";
 import Districts from "../dashboard/admin/Districts";
 import Database from "../dashboard/admin/Database";
@@ -27,6 +29,7 @@ const OWNER_PLACEHOLDER_PATHS = new Set([
   "/owner/calendar",
   "/owner/my-leads",
   "/owner/wed-leads",
+  "/owner/wed-leads/budget-reports",
 ]);
 
 function HomeRedirect() {
@@ -60,6 +63,14 @@ function AppRoutes() {
             <Route path="owner/calendar" element={<Calendar />} />
             <Route path="owner/actual-plan" element={<ActualPlan />} />
             <Route path="owner/wed-leads" element={<WedLeads />} />
+            <Route
+              path="owner/wed-leads/budget-report/:sourceType/:sourceId"
+              element={<BudgetReportPage />}
+            />
+            <Route
+              path="owner/wed-leads/budget-reports"
+              element={<BudgetReportsListPage />}
+            />
             <Route path="owner/my-leads" element={<MyLeads />} />
             <Route path="owner/business-plan" element={<BusinessPlan />} />
             {getRoutedOwnerOnlyNavItems()

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   getClientBookingVenues,
   getClientBookings,
@@ -12,9 +13,23 @@ import {
   CLIENT_BOOKINGS_STATUS_TABS,
   EVENT_CONFIRMATION_STYLES,
 } from "../../../constants/clientBookings";
+import { FINANCE_SOURCE_TYPES } from "../../../constants/finance";
 import { cn } from "../../../utils/cn";
 import { getEntityId } from "../../../utils/entity";
 import { getEventName, getTabLabelBookingCount } from "../../../utils/clientBooking";
+import { buildBudgetReportPath } from "./finance/budgetReportRoute";
+import BudgetReportClonePickerModal from "./finance/BudgetReportClonePickerModal";
+import BudgetReportDrawer from "./finance/BudgetReportDrawer";
+import ClientFinanceDrawer from "./finance/ClientFinanceDrawer";
+import FinanceActionsCell from "./finance/FinanceActionsCell";
+import { buildFinanceColumns } from "./finance/financeColumns";
+import { useSourceFinanceLookup } from "./finance/useSourceFinanceLookup";
+
+const SOURCE_TYPE = FINANCE_SOURCE_TYPES.BOOKING;
+
+function bookingSourceLabel(row) {
+  return row?.clientName?.trim() || getEventName(row?.eventName) || "Booking";
+}
 
 function ConfirmationTag({ value }) {
   return (
@@ -31,6 +46,7 @@ function ConfirmationTag({ value }) {
 }
 
 function BookingsTab() {
+  const navigate = useNavigate();
   const [listStatusTab, setListStatusTab] = useState("all");
   const [eventName, setEventName] = useState("");
   const [venueId, setVenueId] = useState("");
@@ -105,6 +121,23 @@ function BookingsTab() {
     void loadBookings();
   }, [loadBookings]);
 
+  const bookingIds = useMemo(() => events.map((row) => getEntityId(row)), [events]);
+  const { financeMap, reportMap, refetch: refetchFinance } =
+    useSourceFinanceLookup({ sourceType: SOURCE_TYPE, ids: bookingIds });
+
+  const [financeDrawer, setFinanceDrawer] = useState({ open: false, row: null, readOnly: false });
+  const [budgetDrawer, setBudgetDrawer] = useState({ open: false, row: null });
+  const [clonePicker, setClonePicker] = useState({ open: false, row: null });
+
+  const goToBudgetReport = (row) =>
+    navigate(
+      buildBudgetReportPath({
+        sourceType: SOURCE_TYPE,
+        sourceId: getEntityId(row),
+        sourceLabel: bookingSourceLabel(row),
+      }),
+    );
+
   const resetPage = () => setPage(1);
 
   const hasFilters = Boolean(eventName || venueId || startDate || endDate);
@@ -166,8 +199,18 @@ function BookingsTab() {
           </div>
         ),
       },
+      ...buildFinanceColumns({
+        financeMap,
+        reportMap,
+        getSourceId: (row) => getEntityId(row),
+        onAddReport: goToBudgetReport,
+        onEditReport: goToBudgetReport,
+        onCloneReport: (row) => setClonePicker({ open: true, row }),
+        onViewReport: (row) => setBudgetDrawer({ open: true, row }),
+      }),
     ],
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [financeMap, reportMap],
   );
 
   const eventNameOptions = useMemo(
@@ -317,6 +360,12 @@ function BookingsTab() {
             : "No bookings yet."
         }
         rowKey={(row) => getEntityId(row)}
+        renderActions={(row) => (
+          <FinanceActionsCell
+            onView={() => setFinanceDrawer({ open: true, row, readOnly: true })}
+            onEdit={() => setFinanceDrawer({ open: true, row, readOnly: false })}
+          />
+        )}
       />
 
       {!loading && total > 0 ? (
@@ -368,6 +417,40 @@ function BookingsTab() {
           </div>
         </div>
       ) : null}
+
+      <ClientFinanceDrawer
+        open={financeDrawer.open}
+        onClose={() => setFinanceDrawer({ open: false, row: null, readOnly: false })}
+        sourceType={SOURCE_TYPE}
+        sourceId={financeDrawer.row ? getEntityId(financeDrawer.row) : null}
+        financeRecord={
+          financeDrawer.row ? financeMap[getEntityId(financeDrawer.row)] : null
+        }
+        readOnly={financeDrawer.readOnly}
+        onSaved={refetchFinance}
+      />
+
+      <BudgetReportDrawer
+        open={budgetDrawer.open}
+        onClose={() => setBudgetDrawer({ open: false, row: null })}
+        sourceType={SOURCE_TYPE}
+        sourceId={budgetDrawer.row ? getEntityId(budgetDrawer.row) : null}
+        sourceLabel={budgetDrawer.row ? bookingSourceLabel(budgetDrawer.row) : ""}
+      />
+
+      <BudgetReportClonePickerModal
+        open={clonePicker.open}
+        onClose={() => setClonePicker({ open: false, row: null })}
+        sourceType={SOURCE_TYPE}
+        sourceId={clonePicker.row ? getEntityId(clonePicker.row) : null}
+        sourceLabel={clonePicker.row ? bookingSourceLabel(clonePicker.row) : ""}
+        onCloned={() => {
+          const row = clonePicker.row;
+          setClonePicker({ open: false, row: null });
+          refetchFinance();
+          if (row) goToBudgetReport(row);
+        }}
+      />
     </div>
   );
 }

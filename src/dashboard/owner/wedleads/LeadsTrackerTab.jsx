@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getClientLeads } from "../../../api/clientLeads";
 import { getApiErrorMessage } from "../../../api/utils";
 import DataTable from "../../../components/common/DataTable";
@@ -6,10 +7,25 @@ import {
   LEADS_TRACKER_DEFAULT_PAGE_SIZE,
   LEADS_TRACKER_PAGE_SIZE_OPTIONS,
 } from "../../../constants/wedLeads";
+import { FINANCE_SOURCE_TYPES } from "../../../constants/finance";
 import { getEntityId } from "../../../utils/entity";
 import { getMonthBounds } from "../../../utils/clientLead";
+import { buildBudgetReportPath } from "./finance/budgetReportRoute";
+import BudgetReportClonePickerModal from "./finance/BudgetReportClonePickerModal";
+import BudgetReportDrawer from "./finance/BudgetReportDrawer";
+import ClientFinanceDrawer from "./finance/ClientFinanceDrawer";
+import FinanceActionsCell from "./finance/FinanceActionsCell";
+import { buildFinanceColumns } from "./finance/financeColumns";
+import { useSourceFinanceLookup } from "./finance/useSourceFinanceLookup";
+
+const SOURCE_TYPE = FINANCE_SOURCE_TYPES.LEAD;
+
+function leadSourceLabel(row) {
+  return row?.clientDetails?.trim() || row?.eventTypeDetails?.trim() || "Lead";
+}
 
 function LeadsTrackerTab() {
+  const navigate = useNavigate();
   const [monthValue, setMonthValue] = useState("");
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
@@ -59,6 +75,23 @@ function LeadsTrackerTab() {
   useEffect(() => {
     void loadLeads();
   }, [loadLeads]);
+
+  const leadIds = useMemo(() => leads.map((row) => getEntityId(row)), [leads]);
+  const { financeMap, reportMap, refetch: refetchFinance } =
+    useSourceFinanceLookup({ sourceType: SOURCE_TYPE, ids: leadIds });
+
+  const [financeDrawer, setFinanceDrawer] = useState({ open: false, row: null, readOnly: false });
+  const [budgetDrawer, setBudgetDrawer] = useState({ open: false, row: null });
+  const [clonePicker, setClonePicker] = useState({ open: false, row: null });
+
+  const goToBudgetReport = (row) =>
+    navigate(
+      buildBudgetReportPath({
+        sourceType: SOURCE_TYPE,
+        sourceId: getEntityId(row),
+        sourceLabel: leadSourceLabel(row),
+      }),
+    );
 
   const hasFilters = Boolean(monthValue || (rangeStart && rangeEnd));
 
@@ -119,6 +152,15 @@ function LeadsTrackerTab() {
         </span>
       ),
     },
+    ...buildFinanceColumns({
+      financeMap,
+      reportMap,
+      getSourceId: (row) => getEntityId(row),
+      onAddReport: goToBudgetReport,
+      onEditReport: goToBudgetReport,
+      onCloneReport: (row) => setClonePicker({ open: true, row }),
+      onViewReport: (row) => setBudgetDrawer({ open: true, row }),
+    }),
   ];
 
   const tableData = pageRows.map((row, index) => ({
@@ -204,6 +246,12 @@ function LeadsTrackerTab() {
         loading={loading}
         emptyMessage={hasFilters ? "No leads match your filters." : "No leads yet."}
         rowKey={(row) => getEntityId(row)}
+        renderActions={(row) => (
+          <FinanceActionsCell
+            onView={() => setFinanceDrawer({ open: true, row, readOnly: true })}
+            onEdit={() => setFinanceDrawer({ open: true, row, readOnly: false })}
+          />
+        )}
       />
 
       {!loading && total > 0 ? (
@@ -255,6 +303,40 @@ function LeadsTrackerTab() {
           </div>
         </div>
       ) : null}
+
+      <ClientFinanceDrawer
+        open={financeDrawer.open}
+        onClose={() => setFinanceDrawer({ open: false, row: null, readOnly: false })}
+        sourceType={SOURCE_TYPE}
+        sourceId={financeDrawer.row ? getEntityId(financeDrawer.row) : null}
+        financeRecord={
+          financeDrawer.row ? financeMap[getEntityId(financeDrawer.row)] : null
+        }
+        readOnly={financeDrawer.readOnly}
+        onSaved={refetchFinance}
+      />
+
+      <BudgetReportDrawer
+        open={budgetDrawer.open}
+        onClose={() => setBudgetDrawer({ open: false, row: null })}
+        sourceType={SOURCE_TYPE}
+        sourceId={budgetDrawer.row ? getEntityId(budgetDrawer.row) : null}
+        sourceLabel={budgetDrawer.row ? leadSourceLabel(budgetDrawer.row) : ""}
+      />
+
+      <BudgetReportClonePickerModal
+        open={clonePicker.open}
+        onClose={() => setClonePicker({ open: false, row: null })}
+        sourceType={SOURCE_TYPE}
+        sourceId={clonePicker.row ? getEntityId(clonePicker.row) : null}
+        sourceLabel={clonePicker.row ? leadSourceLabel(clonePicker.row) : ""}
+        onCloned={() => {
+          const row = clonePicker.row;
+          setClonePicker({ open: false, row: null });
+          refetchFinance();
+          if (row) goToBudgetReport(row);
+        }}
+      />
     </div>
   );
 }

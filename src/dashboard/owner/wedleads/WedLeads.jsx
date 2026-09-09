@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import PageHeader from "../../../components/common/PageHeader";
 import {
   WED_LEADS_TAB_OPTIONS,
@@ -8,8 +8,23 @@ import { cn } from "../../../utils/cn";
 import BookingsTab from "./BookingsTab";
 import LeadsTrackerTab from "./LeadsTrackerTab";
 
+const VALID_TABS = new Set(Object.values(WED_LEADS_TABS));
+
 function WedLeads() {
-  const [tab, setTab] = useState(WED_LEADS_TABS.TRACKER);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tab = VALID_TABS.has(tabParam) ? tabParam : WED_LEADS_TABS.TRACKER;
+
+  const setTab = (value) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", value);
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   return (
     <article>

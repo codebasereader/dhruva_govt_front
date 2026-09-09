@@ -1,7 +1,13 @@
 import { ROLES } from "../../config.js";
 
 /** Labels shown under the "More" dropdown, in display order. */
-const MORE_MENU_LABELS = ["Vendors", "Districts", "Departments", "Venues"];
+const MORE_MENU_LABELS = [
+  "Vendors",
+  "Districts",
+  "Departments",
+  "Venues",
+  "Budget Reports",
+];
 
 export const DISTRICT_DEPARTMENT_NAV_ITEMS = [
   { label: "Districts", path: "/admin/districts" },
@@ -18,6 +24,7 @@ export const OWNER_ONLY_NAV_ITEMS = [
   { label: "Business Plan", path: "/owner/business-plan" },
   { label: "Bookings", path: "/owner/bookings" },
   { label: "Vendors", path: "/owner/vendors" },
+  { label: "Budget Reports", path: "/owner/wed-leads/budget-reports" },
 ];
 
 /** Owner menu: core pages + shared districts & departments */
