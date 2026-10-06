@@ -15,6 +15,8 @@ function FormField({
   error,
   as = "input",
   options,
+  rows = 3,
+  autoFocus,
   children,
 }) {
   return (
@@ -42,6 +44,18 @@ function FormField({
             </option>
           ))}
         </select>
+      ) : as === "textarea" ? (
+        <textarea
+          id={id}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          required={required}
+          disabled={disabled}
+          rows={rows}
+          autoFocus={autoFocus}
+          className={cn(inputClass, "min-h-20 resize-y")}
+        />
       ) : (
         <input
           id={id}
@@ -51,6 +65,7 @@ function FormField({
           placeholder={placeholder}
           required={required}
           disabled={disabled}
+          autoFocus={autoFocus}
           className={inputClass}
         />
       )}

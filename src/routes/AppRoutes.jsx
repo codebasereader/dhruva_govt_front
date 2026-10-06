@@ -6,6 +6,7 @@ import PagePlaceholder from "../components/common/PagePlaceholder";
 import { getDefaultPathForRole, OWNER_ONLY_NAV_ITEMS } from "../config/navigation";
 import ActualPlan from "../dashboard/owner/actualplan";
 import BusinessPlan from "../dashboard/owner/buisnessplan";
+import OwnerCalendar from "../dashboard/owner/calendar";
 import Departments from "../dashboard/admin/Departments";
 import Districts from "../dashboard/admin/Districts";
 import Database from "../dashboard/admin/Database";
@@ -43,10 +44,12 @@ function AppRoutes() {
           <Route path="admin/database" element={<Database />} />
 
           <Route element={<OwnerRoute />}>
+            <Route path="owner/calendar" element={<OwnerCalendar />} />
             <Route path="owner/actual-plan" element={<ActualPlan />} />
             <Route path="owner/business-plan" element={<BusinessPlan />} />
             {OWNER_ONLY_NAV_ITEMS.filter(
               (item) =>
+                item.path !== "/owner/calendar" &&
                 item.path !== "/owner/actual-plan" &&
                 item.path !== "/owner/business-plan",
             ).map(({ label, path }) => (

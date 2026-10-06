@@ -3,7 +3,7 @@
 This document describes the REST API contract expected by the Dhruva Government frontend **Actual Plan** calendar (`/owner/actual-plan`).
 
 > **Separate from Business Plan:** Actual Plan mirrors Business Plan feature-for-feature, but it is a **different product surface** with its **own REST resource** and **own MongoDB collection**. Do **not** share rows with `business-plans` / `business_plans`.  
-> - Frontend route: `/owner/actual-plan` (first owner menu item)  
+> - Frontend route: `/owner/actual-plan` (second owner menu item; Calendar is first)  
 > - API resource: `/actual-plans`  
 > - Collection: `actual_plans`  
 > - Parallel Business Plan docs: `docs/business-plan-api-schema.md` (`/business-plans`, `business_plans`)
@@ -811,7 +811,7 @@ Each day pill should show:
 | Indian currency helpers | `src/utils/indianCurrency.js` |
 | Venues API | `src/api/venue.js` |
 | Venues admin | `src/dashboard/admin/venue/ViewVenues.jsx` |
-| Nav (Actual Plan is first owner item) | `src/config/navigation.js` |
+| Nav | `src/config/navigation.js` |
 
 ---
 
