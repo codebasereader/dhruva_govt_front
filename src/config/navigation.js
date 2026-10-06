@@ -1,5 +1,14 @@
 import { ROLES } from "../../config.js";
 
+/** Labels shown under the "More" dropdown, in display order. */
+const MORE_MENU_LABELS = [
+  "Vendors",
+  "Districts",
+  "Departments",
+  "Venues",
+  "Budget Reports",
+];
+
 export const DISTRICT_DEPARTMENT_NAV_ITEMS = [
   { label: "Districts", path: "/admin/districts" },
   { label: "Departments", path: "/admin/departments" },
@@ -10,10 +19,12 @@ export const DISTRICT_DEPARTMENT_NAV_ITEMS = [
 export const OWNER_ONLY_NAV_ITEMS = [
   { label: "Calendar", path: "/owner/calendar" },
   { label: "Actual Plan", path: "/owner/actual-plan" },
+  { label: "Wed-Leads", path: "/owner/wed-leads" },
+  { label: "My leads", path: "/owner/my-leads" },
   { label: "Business Plan", path: "/owner/business-plan" },
   { label: "Bookings", path: "/owner/bookings" },
   { label: "Vendors", path: "/owner/vendors" },
-  { label: "Leads Tracker", path: "/owner/leads-tracker" },
+  { label: "Budget Reports", path: "/owner/wed-leads/budget-reports" },
 ];
 
 /** Owner menu: core pages + shared districts & departments */
@@ -42,10 +53,39 @@ export function getNavItemsForRole(role) {
   return OWNER_NAV_ITEMS;
 }
 
+/**
+ * Splits a role's nav items into the primary row and the items that should
+ * live under the "More" dropdown, preserving relative order in each group.
+ */
+export function groupNavItems(items) {
+  const mainItems = [];
+  const moreItems = [];
+
+  for (const item of items) {
+    if (MORE_MENU_LABELS.includes(item.label)) {
+      moreItems.push(item);
+    } else {
+      mainItems.push(item);
+    }
+  }
+
+  return { mainItems, moreItems };
+}
+
+export function getGroupedNavItemsForRole(role) {
+  return groupNavItems(getNavItemsForRole(role));
+}
+
 export function getDefaultPathForRole(role) {
   if (normalizeRole(role) === ROLES.Admin) {
     return ADMIN_NAV_ITEMS[0].path;
   }
 
-  return OWNER_NAV_ITEMS[0].path;
+  const firstRouted = OWNER_NAV_ITEMS.find((item) => item.path);
+  return firstRouted?.path ?? "/owner/calendar";
+}
+
+/** Owner nav items that have a real route (excludes coming-soon placeholders). */
+export function getRoutedOwnerOnlyNavItems() {
+  return OWNER_ONLY_NAV_ITEMS.filter((item) => Boolean(item.path));
 }

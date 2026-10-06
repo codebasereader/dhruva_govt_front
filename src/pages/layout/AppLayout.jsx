@@ -1,8 +1,15 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Header from "../../components/layout/Header";
 import MainContent from "../../components/layout/MainContent";
 
+const FULL_WIDTH_PATH_PREFIXES = ["/owner/wed-leads/budget-report/"];
+
 function AppLayout() {
+  const { pathname } = useLocation();
+  const fullWidth = FULL_WIDTH_PATH_PREFIXES.some((prefix) =>
+    pathname.startsWith(prefix),
+  );
+
   return (
     <div className="flex min-h-dvh flex-col bg-[#fafafa] text-zinc-900 antialiased">
       <div
@@ -12,7 +19,7 @@ function AppLayout() {
 
       <Header />
 
-      <MainContent>
+      <MainContent fullWidth={fullWidth}>
         <Outlet />
       </MainContent>
     </div>

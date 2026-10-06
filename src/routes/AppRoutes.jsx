@@ -3,10 +3,17 @@ import { AdminRoute, OwnerRoute } from "../components/auth/RoleRoute";
 import GuestRoute from "../components/auth/GuestRoute";
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 import PagePlaceholder from "../components/common/PagePlaceholder";
-import { getDefaultPathForRole, OWNER_ONLY_NAV_ITEMS } from "../config/navigation";
+import {
+  getDefaultPathForRole,
+  getRoutedOwnerOnlyNavItems,
+} from "../config/navigation";
 import ActualPlan from "../dashboard/owner/actualplan";
 import BusinessPlan from "../dashboard/owner/buisnessplan";
-import OwnerCalendar from "../dashboard/owner/calendar";
+import Calendar from "../dashboard/owner/calendar";
+import MyLeads from "../dashboard/owner/myleads";
+import WedLeads from "../dashboard/owner/wedleads";
+import BudgetReportPage from "../dashboard/owner/wedleads/finance/BudgetReportPage";
+import BudgetReportsListPage from "../dashboard/owner/wedleads/finance/BudgetReportsListPage";
 import Departments from "../dashboard/admin/Departments";
 import Districts from "../dashboard/admin/Districts";
 import Database from "../dashboard/admin/Database";
@@ -15,6 +22,15 @@ import Users from "../dashboard/admin/Users";
 import { useAuth } from "../hooks/useAuth";
 import AppLayout from "../pages/layout/AppLayout";
 import Login from "../pages/login/Login";
+
+const OWNER_PLACEHOLDER_PATHS = new Set([
+  "/owner/actual-plan",
+  "/owner/business-plan",
+  "/owner/calendar",
+  "/owner/my-leads",
+  "/owner/wed-leads",
+  "/owner/wed-leads/budget-reports",
+]);
 
 function HomeRedirect() {
   const { role, isLoggedIn } = useAuth();
@@ -44,21 +60,28 @@ function AppRoutes() {
           <Route path="admin/database" element={<Database />} />
 
           <Route element={<OwnerRoute />}>
-            <Route path="owner/calendar" element={<OwnerCalendar />} />
+            <Route path="owner/calendar" element={<Calendar />} />
             <Route path="owner/actual-plan" element={<ActualPlan />} />
+            <Route path="owner/wed-leads" element={<WedLeads />} />
+            <Route
+              path="owner/wed-leads/budget-report/:sourceType/:sourceId"
+              element={<BudgetReportPage />}
+            />
+            <Route
+              path="owner/wed-leads/budget-reports"
+              element={<BudgetReportsListPage />}
+            />
+            <Route path="owner/my-leads" element={<MyLeads />} />
             <Route path="owner/business-plan" element={<BusinessPlan />} />
-            {OWNER_ONLY_NAV_ITEMS.filter(
-              (item) =>
-                item.path !== "/owner/calendar" &&
-                item.path !== "/owner/actual-plan" &&
-                item.path !== "/owner/business-plan",
-            ).map(({ label, path }) => (
-              <Route
-                key={path}
-                path={path.replace(/^\//, "")}
-                element={<PagePlaceholder title={label} />}
-              />
-            ))}
+            {getRoutedOwnerOnlyNavItems()
+              .filter((item) => !OWNER_PLACEHOLDER_PATHS.has(item.path))
+              .map(({ label, path }) => (
+                <Route
+                  key={path}
+                  path={path.replace(/^\//, "")}
+                  element={<PagePlaceholder title={label} />}
+                />
+              ))}
           </Route>
 
           <Route element={<AdminRoute />}>

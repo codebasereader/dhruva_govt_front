@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { getNavItemsForRole } from "../config/navigation";
+import { getGroupedNavItemsForRole } from "../config/navigation";
 import { useAuth } from "./useAuth";
 
+/** Returns { mainItems, moreItems } for the current user's role. */
 export function useNavItems() {
   const { role } = useAuth();
 
-  return useMemo(() => getNavItemsForRole(role), [role]);
+  return useMemo(() => getGroupedNavItemsForRole(role), [role]);
 }

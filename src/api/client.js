@@ -1,5 +1,6 @@
 import axios from "axios";
 import { API_BASE_URL } from "../../config.js";
+import { setWedLeadsAuthToken } from "./wedLeadsClient";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -14,6 +15,8 @@ export function setAuthToken(token) {
   } else {
     delete apiClient.defaults.headers.common.Authorization;
   }
+  // Keep Wed-Leads client in sync (separate base URL; same login token).
+  setWedLeadsAuthToken(token);
 }
 
 export default apiClient;
